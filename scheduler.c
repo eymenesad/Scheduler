@@ -20,7 +20,23 @@ typedef struct {
 
 // Function prototypes
 void parseProcessFile(char* filename, Process* process);
-void parseInstructionFile(char* filename, Instruction* instructions);
+
+void parseInstructionFile(char* filename, Instruction* instructions) {
+    FILE *file = fopen(filename, "r");
+    if (file == NULL) {
+        perror("Error opening file");
+        return;
+    }
+
+    char line[50];
+    int index = 0;
+    while (fgets(line, sizeof(line), file)) {
+        sscanf(line, "%s %d", instructions[index].name, &instructions[index].duration);
+        index++;
+    }
+
+    fclose(file);
+}
 void scheduler(Process* processes, int processCount, Instruction* instructions, int instructionCount);
 
 int main() {
@@ -29,13 +45,17 @@ int main() {
     Instruction instructions[21]; // Assuming 20 instructions plus 'exit'
 
     // Parse the process definition file
-    parseProcessFile("definition.txt", processes);
+    //parseProcessFile("definition.txt", processes);
 
     // Parse the instruction set file
     parseInstructionFile("instructions.txt", instructions);
+    // For testing: Print the instructions to verify parsing
+    for (int i = 0; i < 21; i++) {
+        printf("%s %d\n", instructions[i].name, instructions[i].duration);
+    }
 
     // Call the scheduler function
-    scheduler(processes, 10, instructions, 21);
+    //scheduler(processes, 10, instructions, 21);
 
     // Add code to calculate and print waiting and turnaround times
 
@@ -43,10 +63,6 @@ int main() {
 }
 
 void parseProcessFile(char* filename, Process* process) {
-    // Implement file parsing logic
-}
-
-void parseInstructionFile(char* filename, Instruction* instructions) {
     // Implement file parsing logic
 }
 
