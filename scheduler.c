@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <limits.h>
 
 // Define a structure for an instruction
 typedef struct {
@@ -87,166 +88,92 @@ void parseDefinitionFile(char* filename, Process* processes, int processCount) {
 
     fclose(file);
 }
-Process* getNextProcess(Process* processes, int processCount, int currentTime) {
-    Process* nextProcess = NULL;
-
-    // Find the highest priority Platinum process that has arrived
-    for (int i = 0; i < processCount; i++) {
-        if (strcmp(processes[i].type, "PLATINUM") == 0 && processes[i].arrivalTime <= currentTime) {
-            if (nextProcess == NULL ||
-                (processes[i].priority < nextProcess->priority) ||
-                (processes[i].priority == nextProcess->priority && strcmp(processes[i].name, nextProcess->name) < 0)) {
-                nextProcess = &processes[i];
-            }
-        }
-    }
-
-    if (nextProcess != NULL) {
-        return nextProcess;
-    }
-
-    // Find the highest priority Gold or Silver process that has arrived
-    for (int i = 0; i < processCount; i++) {
-        if ((strcmp(processes[i].type, "GOLD") == 0 || strcmp(processes[i].type, "SILVER") == 0) &&
-            processes[i].arrivalTime <= currentTime) {
-            if (nextProcess == NULL ||
-                (processes[i].priority < nextProcess->priority) ||
-                (processes[i].priority == nextProcess->priority && strcmp(processes[i].name, nextProcess->name) < 0)) {
-                nextProcess = &processes[i];
-            }
-        }
-    }
-
-    return nextProcess;
-}
-
-int shouldPreempt(Process* currentProcess, Process* processes, int processCount, int currentTime) {
-    // Preemption is allowed only for silver processes after their time quantum is reached
-    if (strcmp(currentProcess->type, "SILVER") == 0 && currentTime - currentProcess->arrivalTime >= 3 * 80) {
-        return 1; // Preempt the silver process
-    }
-
-    // Check if a gold process has reached its time quantum and should be upgraded to platinum
-    if (strcmp(currentProcess->type, "GOLD") == 0 && currentTime - currentProcess->arrivalTime >= 5 * 120) {
-        strcpy(currentProcess->type, "PLATINUM");
-        return 0; // Continue executing the upgraded platinum process
-    }
-
-    // Check if a platinum process has completed its execution
-    if (strcmp(currentProcess->type, "PLATINUM") == 0 && currentProcess->currentLine >= currentProcess->instructionCount) {
-        return 0; // Process has completed, no need to preempt
-    }
-    // Check if there is a higher-priority process that has arrived
-    for (int i = 0; i < processCount; i++) {
-        if (currentProcess != &processes[i] && processes[i].arrivalTime <= currentTime) {
-            if (processes[i].priority < currentProcess->priority ||
-                (processes[i].priority == currentProcess->priority && strcmp(processes[i].name, currentProcess->name) < 0)) {
-                return 1; // Preempt the current process
-            }
-        }
-    }
-    // No preemption for other cases
-    return 0;
-}
-
-// Comparator function for sorting processes by arrival time
-int compareArrivalTimeAndPriority(const void* a, const void* b) {
-    const Process* processA = (const Process*)a;
-    const Process* processB = (const Process*)b;
-
-    // First, compare by arrival time
-    if (processA->arrivalTime < processB->arrivalTime) {
-        return -1;
-    } else if (processA->arrivalTime > processB->arrivalTime) {
-        return 1;
-    } else {
-        // If arrival times are equal, compare by priority
-        if (processA->priority < processB->priority) {
-            return -1;
-        } else if (processA->priority > processB->priority) {
-            return 1;
-        } else {
-            // If both arrival times and priorities are equal, compare by name
-            return strcmp(processA->name, processB->name);
-        }
-    }
-}
 
 void scheduler(Process* processes, int processCount) {
     int currentTime = 0;
     int totalWaitingTime = 0;
     int totalTurnaroundTime = 0;
-    
-    // Create an array of pointers to processes
-    Process* processPointers[processCount];
-    for (int i = 0; i < processCount; i++) {
-        processPointers[i] = &processes[i];
-    }
-    
-    // Sort the array of process pointers based on arrival time
-    qsort(processPointers, processCount, sizeof(Process*), compareArrivalTimeAndPriority);
-    
-    // function to get the next process
-    Process* currentProcess = getNextProcess(processes, processCount, currentTime);
+    Process* lastProcess = NULL;
 
-    while (currentProcess != NULL) {
+    // Execute processes in a loop until all processes are completed
+    while (1) {
+        Process* currentProcess = NULL;
+        int highestPriority = INT_MAX;
+        
+
+       // Find the highest priority process that has arrived
+        for (int i = 0; i < processCount; i++) {
+            Process* candidate = &processes[i];
+            if (candidate->arrivalTime <= currentTime &&
+                (strcmp(candidate->type, "PLATINUM") == 0) &&
+                candidate->currentLine < candidate->instructionCount) {
+                if (currentProcess == NULL ||
+                    (strcmp(candidate->type, "PLATINUM") == 0 && candidate->priority < currentProcess->priority) ||
+                    (strcmp(candidate->type, "PLATINUM") == 0 && candidate->priority == currentProcess->priority &&
+                     candidate->arrivalTime < currentProcess->arrivalTime) ||
+                    (strcmp(candidate->type, "PLATINUM") != 0 &&
+                     (candidate->priority < highestPriority ||
+                      (candidate->priority == highestPriority &&
+                       (candidate->arrivalTime < currentProcess->arrivalTime ||
+                        (candidate->arrivalTime == currentProcess->arrivalTime &&
+                         strcmp(candidate->name, currentProcess->name) < 0)))))) {
+                    currentProcess = candidate;
+                    highestPriority = candidate->priority;
+                }
+            }
+        }
+        // If no process is available to execute, break the loop
+        if (currentProcess == NULL) {
+            break;
+        }
+        //printf("Current process: %s\n", currentProcess->name);
         // Handle context switch
-        currentTime += 10; // Context switch time
-        int processBurstTime = 0; // Total burst time for the current process
-        /// Execute the process
+        if (currentProcess != lastProcess) {
+            currentTime += 10; // Context switch time
+        }
+
+        
+        
+        
+        // Execute the process
+        int processBurstTime = 0;
         for (int i = currentProcess->currentLine; i < currentProcess->instructionCount; i++) {
-            // Find the duration of the current instruction
             int duration = currentProcess->instructions[i].duration;
-            // Check for preemption or quantum expiration
-            if (shouldPreempt(currentProcess, processes, processCount, currentTime)) {
-                currentProcess->currentLine = i ;
-                break;
-            }
 
-            // Check if a silver process should be upgraded to gold
-            if (strcmp(currentProcess->type, "SILVER") == 0 && (currentTime - currentProcess->arrivalTime) % (3 * 80) == 0) {
+            // Check for preemption (Silver process) or upgrades (Gold to Platinum)
+            if (strcmp(currentProcess->type, "SILVER") == 0 && processBurstTime >= 3 * 80) {
                 strcpy(currentProcess->type, "GOLD");
-                break;
+                break; // Preempt the Silver process
             }
-
-            // Check if a gold process should be upgraded to platinum
-            if (strcmp(currentProcess->type, "GOLD") == 0 && (currentTime - currentProcess->arrivalTime) % (5 * 120) == 0) {
+            if (strcmp(currentProcess->type, "GOLD") == 0 && processBurstTime >= 5 * 120) {
                 strcpy(currentProcess->type, "PLATINUM");
-                break;
+                break; // Upgrade Gold to Platinum
             }
-
             // Execute the instruction
             currentTime += duration;
-            currentProcess->currentLine++;
-            // Update process burst time
             processBurstTime += duration;
-        }
-        // Calculate turnaround time for the current process
-        int turnaroundTime = currentTime - currentProcess->arrivalTime;
+            currentProcess->currentLine++;
+            
 
-        // Calculate waiting time for the current process
-        int waitingTime = turnaroundTime - processBurstTime ;
+            if (currentProcess->currentLine == currentProcess->instructionCount) {
+                // Calculate turnaround and waiting times
+                int turnaroundTime = currentTime - currentProcess->arrivalTime;
+                int waitingTime = turnaroundTime - processBurstTime;
 
-        // Add the waiting time and turnaround time to the total
-        totalWaitingTime += waitingTime;
-        totalTurnaroundTime += turnaroundTime;
-        // Select the next process to run
-        Process* nextProcess = getNextProcess(processes, processCount, currentTime);
-        if (nextProcess != currentProcess) {
-            currentTime += 10; // Context switch time for switching processes
+                totalWaitingTime += waitingTime;
+                totalTurnaroundTime += turnaroundTime;
+            }
         }
-        currentProcess = nextProcess;
-        
+
+        lastProcess = currentProcess;
     }
 
     // Calculate and print average waiting and turnaround times
-    double avgWaitingTime = (double)totalWaitingTime / processCount;
-    double avgTurnaroundTime = (double)totalTurnaroundTime / processCount;
+    double avgWaitingTime = (double)totalWaitingTime / (processCount);
+    double avgTurnaroundTime = (double)totalTurnaroundTime / (processCount);
     printf("Average Waiting Time: %.2lf\n", avgWaitingTime);
     printf("Average Turnaround Time: %.2lf\n", avgTurnaroundTime);
 }
-
-
 int main() {
     // Placeholder for process and instruction arrays
     Process processes[10]; // Assuming a maximum of 10 processes
@@ -268,7 +195,7 @@ int main() {
         }
     }
     // Parse the process definition file
-    parseDefinitionFile("definition.txt", processes, 10);
+    parseDefinitionFile("def2.txt", processes, 10);
     // Create an array to store processes from the definition file
     Process definedProcesses[10]; // Assuming a maximum of 10 processes in the definition file
     int definedProcessCount = 0; // Initialize the count of defined processes
