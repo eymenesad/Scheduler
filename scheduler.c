@@ -295,26 +295,6 @@ int main() {
             }
         }
     }
-    
-    
-   // For testing: Print the process files to verify parsing
-    /*for (int i = 0; i < 10; i++) {
-        for (int j = 0; j < processes[i].instructionCount; j++) {
-            printf("%s\n", processes[i].instructions[j]);
-        }
-    }*/
-    
-    // For testing: Print the instructions to verify parsing
-    /*for (int i = 0; i < 21; i++) {
-        printf("%s %d\n", instructions[i].name, instructions[i].duration);
-    }*/
-    
-    // For testing: Print the definition.txt to verify parsing
-    /*for (int i = 0; i < 10; i++) {
-        printf("%s %d %d %d %s\n", processes[i].name, processes[i].priority, processes[i].arrivalTime,processes[i].instructionCount ,processes[i].type);
-    }*/
-    
-
     // Call the scheduler function with only the defined processes
     scheduler(definedProcesses, definedProcessCount);
     
