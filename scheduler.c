@@ -2,6 +2,12 @@
 #include <stdlib.h>
 #include <string.h>
 
+// Define a structure for an instruction
+typedef struct {
+    char name[20]; // Name of the instruction
+    int duration;  // Duration of the instruction in ms
+} Instruction;
+
 // Define a structure for a process
 typedef struct {
     char name[10];
@@ -9,16 +15,10 @@ typedef struct {
     int arrivalTime;
     char type[10];
     int currentLine;
-    char instructions[100][20]; // Assuming a maximum of 100 instructions per process
+    Instruction instructions[21]; // Array of instructions
     int instructionCount; // Number of instructions
 } Process;
 
-
-// Define a structure for an instruction
-typedef struct {
-    char name[20]; // Name of the instruction
-    int duration;  // Duration of the instruction in ms
-} Instruction;
 
 // Function prototypes
 void parseProcessFile(char* filename, Process* process) {
@@ -28,7 +28,7 @@ void parseProcessFile(char* filename, Process* process) {
         return;
     }
 
-    char line[20];
+    char line[21];
     process->instructionCount = 0;
     while (fgets(line, sizeof(line), file)) {
         // Remove newline character if present
@@ -36,10 +36,11 @@ void parseProcessFile(char* filename, Process* process) {
         if (len > 0 && line[len - 1] == '\n') {
             line[len - 1] = '\0';
         }
-        strcpy(process->instructions[process->instructionCount], line);
+         // Copy the instruction name to the next available slot in the array
+        strcpy(process->instructions[process->instructionCount].name, line);
+        
         process->instructionCount++;
     }
-
     fclose(file);
 }
 void parseInstructionFile(char* filename, Instruction* instructions) {
@@ -52,10 +53,10 @@ void parseInstructionFile(char* filename, Instruction* instructions) {
     char line[50];
     int index = 0;
     while (fgets(line, sizeof(line), file)) {
+        
         sscanf(line, "%s %d", instructions[index].name, &instructions[index].duration);
         index++;
     }
-
     fclose(file);
 }
 void parseDefinitionFile(char* filename, Process* processes, int processCount) {
@@ -89,11 +90,11 @@ void parseDefinitionFile(char* filename, Process* processes, int processCount) {
 Process* getNextProcess(Process* processes, int processCount, int currentTime) {
     Process* nextProcess = NULL;
 
-    // Logic to find the highest priority Platinum process at the current time
+    // Find the highest priority Platinum process that has arrived
     for (int i = 0; i < processCount; i++) {
         if (strcmp(processes[i].type, "PLATINUM") == 0 && processes[i].arrivalTime <= currentTime) {
-            if (nextProcess == NULL || 
-                processes[i].priority < nextProcess->priority ||
+            if (nextProcess == NULL ||
+                (processes[i].priority < nextProcess->priority) ||
                 (processes[i].priority == nextProcess->priority && strcmp(processes[i].name, nextProcess->name) < 0)) {
                 nextProcess = &processes[i];
             }
@@ -104,14 +105,13 @@ Process* getNextProcess(Process* processes, int processCount, int currentTime) {
         return nextProcess;
     }
 
-    // Logic for selecting Gold and Silver processes
+    // Find the highest priority Gold or Silver process that has arrived
     for (int i = 0; i < processCount; i++) {
         if ((strcmp(processes[i].type, "GOLD") == 0 || strcmp(processes[i].type, "SILVER") == 0) &&
-             processes[i].arrivalTime <= currentTime) {
-            if (nextProcess == NULL || 
-                processes[i].arrivalTime < nextProcess->arrivalTime ||
-                (processes[i].arrivalTime == nextProcess->arrivalTime && processes[i].priority < nextProcess->priority) ||
-                (processes[i].arrivalTime == nextProcess->arrivalTime && processes[i].priority == nextProcess->priority && strcmp(processes[i].name, nextProcess->name) < 0)) {
+            processes[i].arrivalTime <= currentTime) {
+            if (nextProcess == NULL ||
+                (processes[i].priority < nextProcess->priority) ||
+                (processes[i].priority == nextProcess->priority && strcmp(processes[i].name, nextProcess->name) < 0)) {
                 nextProcess = &processes[i];
             }
         }
@@ -119,6 +119,7 @@ Process* getNextProcess(Process* processes, int processCount, int currentTime) {
 
     return nextProcess;
 }
+
 int shouldPreempt(Process* currentProcess, Process* processes, int processCount, int currentTime) {
     // Preemption is allowed only for silver processes after their time quantum is reached
     if (strcmp(currentProcess->type, "SILVER") == 0 && currentTime - currentProcess->arrivalTime >= 3 * 80) {
@@ -135,45 +136,70 @@ int shouldPreempt(Process* currentProcess, Process* processes, int processCount,
     if (strcmp(currentProcess->type, "PLATINUM") == 0 && currentProcess->currentLine >= currentProcess->instructionCount) {
         return 0; // Process has completed, no need to preempt
     }
-
+    // Check if there is a higher-priority process that has arrived
+    for (int i = 0; i < processCount; i++) {
+        if (currentProcess != &processes[i] && processes[i].arrivalTime <= currentTime) {
+            if (processes[i].priority < currentProcess->priority ||
+                (processes[i].priority == currentProcess->priority && strcmp(processes[i].name, currentProcess->name) < 0)) {
+                return 1; // Preempt the current process
+            }
+        }
+    }
     // No preemption for other cases
     return 0;
 }
 
 // Comparator function for sorting processes by arrival time
-int compareArrivalTime(const void* a, const void* b) {
-    const Process* processA = *(const Process**)a;
-    const Process* processB = *(const Process**)b;
-    return processA->arrivalTime - processB->arrivalTime;
+int compareArrivalTimeAndPriority(const void* a, const void* b) {
+    const Process* processA = (const Process*)a;
+    const Process* processB = (const Process*)b;
+
+    // First, compare by arrival time
+    if (processA->arrivalTime < processB->arrivalTime) {
+        return -1;
+    } else if (processA->arrivalTime > processB->arrivalTime) {
+        return 1;
+    } else {
+        // If arrival times are equal, compare by priority
+        if (processA->priority < processB->priority) {
+            return -1;
+        } else if (processA->priority > processB->priority) {
+            return 1;
+        } else {
+            // If both arrival times and priorities are equal, compare by name
+            return strcmp(processA->name, processB->name);
+        }
+    }
 }
 
-void scheduler(Process* processes, int processCount, Instruction* instructions, int instructionCount) {
+void scheduler(Process* processes, int processCount) {
+    int currentTime = 0;
+    int totalWaitingTime = 0;
+    int totalTurnaroundTime = 0;
+    
     // Create an array of pointers to processes
     Process* processPointers[processCount];
     for (int i = 0; i < processCount; i++) {
         processPointers[i] = &processes[i];
     }
-
+    
     // Sort the array of process pointers based on arrival time
-    qsort(processPointers, processCount, sizeof(Process*), compareArrivalTime);
-    int currentTime = 0;
+    qsort(processPointers, processCount, sizeof(Process*), compareArrivalTimeAndPriority);
+    
     // function to get the next process
     Process* currentProcess = getNextProcess(processes, processCount, currentTime);
-    int totalWaitingTime = 0;
-    int totalTurnaroundTime = 0;
+
     while (currentProcess != NULL) {
         // Handle context switch
         currentTime += 10; // Context switch time
         int processBurstTime = 0; // Total burst time for the current process
-
         /// Execute the process
         for (int i = currentProcess->currentLine; i < currentProcess->instructionCount; i++) {
             // Find the duration of the current instruction
-            int duration = instructions[i].duration;
-
+            int duration = currentProcess->instructions[i].duration;
             // Check for preemption or quantum expiration
             if (shouldPreempt(currentProcess, processes, processCount, currentTime)) {
-                currentProcess->currentLine = i + 1;
+                currentProcess->currentLine = i ;
                 break;
             }
 
@@ -204,13 +230,13 @@ void scheduler(Process* processes, int processCount, Instruction* instructions, 
         // Add the waiting time and turnaround time to the total
         totalWaitingTime += waitingTime;
         totalTurnaroundTime += turnaroundTime;
-        
         // Select the next process to run
         Process* nextProcess = getNextProcess(processes, processCount, currentTime);
         if (nextProcess != currentProcess) {
             currentTime += 10; // Context switch time for switching processes
         }
         currentProcess = nextProcess;
+        
     }
 
     // Calculate and print average waiting and turnaround times
@@ -224,9 +250,8 @@ void scheduler(Process* processes, int processCount, Instruction* instructions, 
 int main() {
     // Placeholder for process and instruction arrays
     Process processes[10]; // Assuming a maximum of 10 processes
-    Instruction instructions[21]; // Assuming 20 instructions plus 'exit'
-
-    // Parse the process definition file
+    Instruction instru_ctions[21]; // Assuming a maximum of 21 instructions
+    
 
     int processCount = 0;
     // Parse each process file
@@ -242,27 +267,8 @@ int main() {
             processCount++; // Increment processCount for successfully parsed process
         }
     }
-
     // Parse the process definition file
-    
-    
-   // For testing: Print the process files to verify parsing
-    /*for (int i = 0; i < 10; i++) {
-        for (int j = 0; j < processes[i].instructionCount; j++) {
-            printf("%s\n", processes[i].instructions[j]);
-        }
-    }*/
-    // Parse the instruction set file
-    parseInstructionFile("instructions.txt", instructions);
-    // For testing: Print the instructions to verify parsing
-    /*for (int i = 0; i < 21; i++) {
-        printf("%s %d\n", instructions[i].name, instructions[i].duration);
-    }*/
     parseDefinitionFile("definition.txt", processes, 10);
-    // For testing: Print the definition.txt to verify parsing
-    /*for (int i = 0; i < 10; i++) {
-        printf("%s %d %d %d %s\n", processes[i].name, processes[i].priority, processes[i].arrivalTime,processes[i].instructionCount ,processes[i].type);
-    }*/
     // Create an array to store processes from the definition file
     Process definedProcesses[10]; // Assuming a maximum of 10 processes in the definition file
     int definedProcessCount = 0; // Initialize the count of defined processes
@@ -274,11 +280,44 @@ int main() {
             definedProcessCount++;
         }
     }
+    
+
+    // Parse the instruction set file
+    parseInstructionFile("instructions.txt", instru_ctions);
+    // Update the duration of each instruction in the defined processes
+    for (int i = 0; i < definedProcessCount; i++) {
+        for (int j = 0; j < definedProcesses[i].instructionCount; j++) {
+            for (int k = 0; k < 21; k++) {
+                if (strcmp(definedProcesses[i].instructions[j].name, instru_ctions[k].name) == 0) {
+                    definedProcesses[i].instructions[j].duration = instru_ctions[k].duration;
+                    break;
+                }
+            }
+        }
+    }
+    
+    
+   // For testing: Print the process files to verify parsing
+    /*for (int i = 0; i < 10; i++) {
+        for (int j = 0; j < processes[i].instructionCount; j++) {
+            printf("%s\n", processes[i].instructions[j]);
+        }
+    }*/
+    
+    // For testing: Print the instructions to verify parsing
+    /*for (int i = 0; i < 21; i++) {
+        printf("%s %d\n", instructions[i].name, instructions[i].duration);
+    }*/
+    
+    // For testing: Print the definition.txt to verify parsing
+    /*for (int i = 0; i < 10; i++) {
+        printf("%s %d %d %d %s\n", processes[i].name, processes[i].priority, processes[i].arrivalTime,processes[i].instructionCount ,processes[i].type);
+    }*/
+    
 
     // Call the scheduler function with only the defined processes
-    scheduler(definedProcesses, definedProcessCount, instructions, processes->instructionCount);
-    // Call the scheduler function
-    scheduler(processes, processCount, instructions, processes->instructionCount);
+    scheduler(definedProcesses, definedProcessCount);
+    
 
     // Add code to calculate and print waiting and turnaround times
 
