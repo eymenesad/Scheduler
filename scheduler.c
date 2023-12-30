@@ -19,7 +19,6 @@ typedef struct {
     Instruction instructions[21]; // Array of instructions
     int instructionCount; // Number of instructions
     int totalExecTime; // Total execution time so far
-    int lastStartTime; // Last time the process was started or resumed
 } Process;
 
 
@@ -275,8 +274,9 @@ void scheduler(Process* processes, int processCount) {
         
         if(strcmp(currentProcess->instructions[currentProcess->currentLine-1].name, "exit") == 0){
             // Calculate turnaround and waiting times
+            printf("total exec time %d\n", currentProcess->totalExecTime);
             int turnaroundTime = currentTime - currentProcess->arrivalTime;
-            int waitingTime = turnaroundTime - currentProcess->totalExecTime;
+            int waitingTime = turnaroundTime - (currentProcess->totalExecTime);
             totalWaitingTime += waitingTime;
             totalTurnaroundTime += turnaroundTime;
         }
@@ -313,14 +313,13 @@ int main() {
         processes[i].arrivalTime = -1; // Default value indicating uninitialized
         strcpy(processes[i].type, "UNKNOWN"); // Default value
         processes[i].totalExecTime = 0; // Initialize the total execution time to 0
-        processes[i].lastStartTime = 0; // Initialize the last start time to 0
         parseProcessFile(filename, &processes[i]);
         if (processes[i].instructionCount > 0) {
             processCount++; // Increment processCount for successfully parsed process
         }
     }
     // Parse the process definition file
-    parseDefinitionFile("def4.txt", processes, 10);
+    parseDefinitionFile("def7.txt", processes, 10);
     // Create an array to store processes from the definition file
     Process definedProcesses[10]; // Assuming a maximum of 10 processes in the definition file
     int definedProcessCount = 0; // Initialize the count of defined processes
