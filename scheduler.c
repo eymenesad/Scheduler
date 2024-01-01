@@ -14,11 +14,14 @@ typedef struct {
     char name[10];
     int priority;
     int arrivalTime;
+    int arrivalTimePrimal;
     char type[10];
     int currentLine;
     Instruction instructions[21]; // Array of instructions
     int instructionCount; // Number of instructions
     int totalExecTime; // Total execution time so far
+    int quantum; // Time quantum for the process
+    int quantumCount; // Number of time quanta used so far
 } Process;
 
 
@@ -81,7 +84,15 @@ void parseDefinitionFile(char* filename, Process* processes, int processCount) {
             if (strcmp(processes[i].name, processName) == 0) {
                 processes[i].priority = priority;
                 processes[i].arrivalTime = arrivalTime;
+                processes[i].arrivalTimePrimal = arrivalTime;
                 strcpy(processes[i].type, processType);
+                if (strcmp(processes[i].type, "SILVER") == 0) {
+                    processes[i].quantum = 80;
+                } else if(strcmp(processes[i].type, "GOLD") == 0) { 
+                    processes[i].quantum = 120;
+                }else if(strcmp(processes[i].type, "PLATINUM") == 0) { 
+                    processes[i].quantum = INT_MAX;
+                }
                 break;
             }
         }
@@ -100,6 +111,7 @@ void scheduler(Process* processes, int processCount) {
     while (1) {
         Process* currentProcess = NULL;
         int highestPriority = 0;
+        
         
 
         // Find the highest priority process that has arrived
@@ -160,7 +172,8 @@ void scheduler(Process* processes, int processCount) {
         if (currentProcess != lastProcess) {
             currentTime += 10; // Context switch time
         }
-        //printf("Current time: %d Current process: %s  \n", currentTime, currentProcess->name);
+        printf("Current time: %d Current process: %s  \n", currentTime, currentProcess->name);
+        int timeSlice = 0; // Time slice used in this round
         int processChange = 0;
         // Execute the process
         //int processBurstTime = 0;
@@ -168,14 +181,15 @@ void scheduler(Process* processes, int processCount) {
         // Execute the instruction
         currentTime += duration;
         currentProcess->totalExecTime += duration;
+        timeSlice += duration;
+        if(timeSlice>=currentProcess->quantum){
+            currentProcess->quantumCount += 1;
+        }
         //processBurstTime += duration;
         currentProcess->currentLine++;
-        
         while (currentProcess->currentLine < currentProcess->instructionCount || processChange) {
             processChange = 0;
-            
-            
-
+            int quantumValue=0;
             if(strcmp(currentProcess->type, "PLATINUM") != 0){
                 Process* nextProcess = NULL;
                 int nextHighestPriority = 0;
@@ -183,6 +197,7 @@ void scheduler(Process* processes, int processCount) {
                 for (int i = 0; i < processCount; ++i) {
                     Process* possible = &processes[i];
                     //print every processes array
+                   
                     
                     if (possible->arrivalTime <= currentTime &&
                         possible->currentLine < possible->instructionCount) {
@@ -210,7 +225,7 @@ void scheduler(Process* processes, int processCount) {
                             }
                         }else {
                             
-                            printf(" current time %d currentprocess %s possible: %s nextProcess %s\n",currentTime, currentProcess->name ,possible->name, nextProcess->name);
+                            //printf(" current time %d currentprocess %s possible: %s nextProcess %s\n",currentTime, currentProcess->name ,possible->name, nextProcess->name);
                             // Check if this possible has higher priority to be scheduled
                             if (nextProcess == NULL || possible->priority > nextHighestPriority){
                                 
@@ -243,25 +258,36 @@ void scheduler(Process* processes, int processCount) {
                     currentTime += 10; // Context switch time
                     currentProcess = nextProcess;
                     processChange = 1;
+                    currentProcess->quantumCount += 1;
                     break;
                 }
                 
-            
                 
             }
-           // printf("Current time: %d Current process: %s  \n", currentTime, currentProcess->name);
+            // printf("Current time: %d Current process: %s  \n", currentTime, currentProcess->name);
             int duration = currentProcess->instructions[currentProcess->currentLine].duration;
+            printf("duration %d\n", duration);
             // Execute the instruction
             currentTime += duration;
             currentProcess->totalExecTime += duration;
+            currentProcess->arrivalTime = currentTime;
+            timeSlice += duration;
+            
+
+            if(timeSlice>=currentProcess->quantum){
+                for(int i=timeSlice; i>=currentProcess->quantum; i-=currentProcess->quantum){
+                    quantumValue +=1;
+                }  
+            }
+            currentProcess->quantumCount +=  quantumValue;
             //processBurstTime += duration;
             currentProcess->currentLine++;
             // Check for preemption (Silver process) or upgrades (Gold to Platinum)
-            if (strcmp(currentProcess->type, "SILVER") == 0 && currentProcess->totalExecTime >= 3 * 80) {
+            if (strcmp(currentProcess->type, "SILVER") == 0 && currentProcess->quantumCount > 3 ) {
                 strcpy(currentProcess->type, "GOLD");
                 //processChange=1; // Preempt the Silver process
             }
-            if (strcmp(currentProcess->type, "GOLD") == 0 && currentProcess->totalExecTime >= 5 * 120) {
+            if (strcmp(currentProcess->type, "GOLD") == 0 && currentProcess->quantumCount > 5 ) {
                 printf("Upgrading %s to PLATINUM\n", currentProcess->name);
                 strcpy(currentProcess->type, "PLATINUM");
                 //processChange=1; // Upgrade Gold to Platinum
@@ -274,8 +300,8 @@ void scheduler(Process* processes, int processCount) {
         
         if(strcmp(currentProcess->instructions[currentProcess->currentLine-1].name, "exit") == 0){
             // Calculate turnaround and waiting times
-            printf("total exec time %d\n", currentProcess->totalExecTime);
-            int turnaroundTime = currentTime - currentProcess->arrivalTime;
+            
+            int turnaroundTime = currentTime - currentProcess->arrivalTimePrimal;
             int waitingTime = turnaroundTime - (currentProcess->totalExecTime);
             totalWaitingTime += waitingTime;
             totalTurnaroundTime += turnaroundTime;
@@ -284,7 +310,6 @@ void scheduler(Process* processes, int processCount) {
         
 
         
-        printf("Process %s completed at time %d\n", currentProcess->name, currentTime);
         
         lastProcess = currentProcess;
         
@@ -313,13 +338,14 @@ int main() {
         processes[i].arrivalTime = -1; // Default value indicating uninitialized
         strcpy(processes[i].type, "UNKNOWN"); // Default value
         processes[i].totalExecTime = 0; // Initialize the total execution time to 0
+        processes[i].quantumCount = 0; // Initialize the quantum to 0
         parseProcessFile(filename, &processes[i]);
         if (processes[i].instructionCount > 0) {
             processCount++; // Increment processCount for successfully parsed process
         }
     }
     // Parse the process definition file
-    parseDefinitionFile("def7.txt", processes, 10);
+    parseDefinitionFile("def3.txt", processes, 10);
     // Create an array to store processes from the definition file
     Process definedProcesses[10]; // Assuming a maximum of 10 processes in the definition file
     int definedProcessCount = 0; // Initialize the count of defined processes
@@ -332,10 +358,6 @@ int main() {
         }
     }
     
-    for (int i = 0; i < definedProcessCount; i++) {
-        printf("%s %d %d %s\n", definedProcesses[i].name, definedProcesses[i].priority,
-            definedProcesses[i].arrivalTime, definedProcesses[i].type);
-    }
     // Parse the instruction set file
     parseInstructionFile("instructions.txt", instru_ctions);
     // Update the duration of each instruction in the defined processes
