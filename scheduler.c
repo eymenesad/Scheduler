@@ -345,7 +345,7 @@ int main() {
         }
     }
     // Parse the process definition file
-    parseDefinitionFile("def3.txt", processes, 10);
+    parseDefinitionFile("def4.txt", processes, 10);
     // Create an array to store processes from the definition file
     Process definedProcesses[10]; // Assuming a maximum of 10 processes in the definition file
     int definedProcessCount = 0; // Initialize the count of defined processes
