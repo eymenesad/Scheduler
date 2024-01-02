@@ -286,6 +286,7 @@ void scheduler(Process* processes, int processCount) {
             if (strcmp(currentProcess->type, "SILVER") == 0 && currentProcess->quantumCount > 3 ) {
                 strcpy(currentProcess->type, "GOLD");
                 //processChange=1; // Preempt the Silver process
+                //break;
             }
             if (strcmp(currentProcess->type, "GOLD") == 0 && currentProcess->quantumCount > 5 ) {
                 printf("Upgrading %s to PLATINUM\n", currentProcess->name);
@@ -300,7 +301,7 @@ void scheduler(Process* processes, int processCount) {
         
         if(strcmp(currentProcess->instructions[currentProcess->currentLine-1].name, "exit") == 0){
             // Calculate turnaround and waiting times
-            
+            printf("Process %s completed at time %d\n", currentProcess->name, currentTime);
             int turnaroundTime = currentTime - currentProcess->arrivalTimePrimal;
             int waitingTime = turnaroundTime - (currentProcess->totalExecTime);
             totalWaitingTime += waitingTime;
@@ -345,7 +346,7 @@ int main() {
         }
     }
     // Parse the process definition file
-    parseDefinitionFile("def4.txt", processes, 10);
+    parseDefinitionFile("def3.txt", processes, 10);
     // Create an array to store processes from the definition file
     Process definedProcesses[10]; // Assuming a maximum of 10 processes in the definition file
     int definedProcessCount = 0; // Initialize the count of defined processes
