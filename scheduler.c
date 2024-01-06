@@ -182,6 +182,7 @@ void scheduler(Process* processes, int processCount) {
         currentTime += duration;
         currentProcess->totalExecTime += duration;
         timeSlice += duration;
+        printf("duration first instr: %d  \n ", duration );
         if(timeSlice>=currentProcess->quantum){
             currentProcess->quantumCount += 1;
         }
@@ -247,7 +248,7 @@ void scheduler(Process* processes, int processCount) {
                                     }
                                 }
                             }
-                        }
+                        }   
                     } 
 
                  
@@ -346,7 +347,7 @@ int main() {
         }
     }
     // Parse the process definition file
-    parseDefinitionFile("def3.txt", processes, 10);
+    parseDefinitionFile("def4.txt", processes, 10);
     // Create an array to store processes from the definition file
     Process definedProcesses[10]; // Assuming a maximum of 10 processes in the definition file
     int definedProcessCount = 0; // Initialize the count of defined processes
