@@ -173,11 +173,12 @@ void scheduler(Process* processes, int processCount) {
             currentTime += 10; // Context switch time
         }
         printf("Current time: %d Current process: %s  \n", currentTime, currentProcess->name);
-        int timeSlice = 0; // Time slice used in this round
+        //int timeSlice = 0; // Time slice used in this round
         int processChange = 0;
+        int timeSlice=0;
         // Execute the process
         //int processBurstTime = 0;
-        int duration = currentProcess->instructions[currentProcess->currentLine].duration;
+        /*int duration = currentProcess->instructions[currentProcess->currentLine].duration;
         // Execute the instruction
         currentTime += duration;
         currentProcess->totalExecTime += duration;
@@ -187,10 +188,58 @@ void scheduler(Process* processes, int processCount) {
             currentProcess->quantumCount += 1;
         }
         //processBurstTime += duration;
-        currentProcess->currentLine++;
+        currentProcess->currentLine++;*/
         while (currentProcess->currentLine < currentProcess->instructionCount || processChange) {
             processChange = 0;
             int quantumValue=0;
+            
+            
+            
+            //int timeSlice = 0;
+            
+            // printf("Current time: %d Current process: %s  \n", currentTime, currentProcess->name);
+            int duration = currentProcess->instructions[currentProcess->currentLine].duration;
+            printf("duration %d\n", duration);
+            // Execute the instruction
+            currentTime += duration;
+            currentProcess->totalExecTime += duration;
+            currentProcess->arrivalTime = currentTime;
+            timeSlice += duration;
+            printf("currentProcess quantum : %d \n", currentProcess->quantum);
+
+            if(timeSlice>=currentProcess->quantum){
+                for(int i=timeSlice; i>=currentProcess->quantum; i-=currentProcess->quantum){
+                    quantumValue +=1;
+                    timeSlice-=currentProcess->quantum;
+                    
+                }
+                
+            }else if(timeSlice!=0){
+                quantumValue +=1;
+                
+            }
+            
+            
+            currentProcess->quantumCount +=  quantumValue;
+            printf("currentProcess %s quantum count: %d \n",currentProcess->name ,currentProcess->quantumCount);
+            //processBurstTime += duration;
+            currentProcess->currentLine++;
+            // Check for preemption (Silver process) or upgrades (Gold to Platinum)
+            if (strcmp(currentProcess->type, "SILVER") == 0 && currentProcess->quantumCount > 3 ) {
+                strcpy(currentProcess->type, "GOLD");
+                //processChange=1; // Preempt the Silver process
+                //break;
+            }
+            if (strcmp(currentProcess->type, "GOLD") == 0 && currentProcess->quantumCount > 5 ) {
+                printf("Upgrading %s to PLATINUM\n", currentProcess->name);
+                strcpy(currentProcess->type, "PLATINUM");
+                //processChange=1; // Upgrade Gold to Platinum
+                //break;
+            }
+            
+            
+            
+            
             if(strcmp(currentProcess->type, "PLATINUM") != 0){
                 Process* nextProcess = NULL;
                 int nextHighestPriority = 0;
@@ -265,36 +314,7 @@ void scheduler(Process* processes, int processCount) {
                 
                 
             }
-            // printf("Current time: %d Current process: %s  \n", currentTime, currentProcess->name);
-            int duration = currentProcess->instructions[currentProcess->currentLine].duration;
-            printf("duration %d\n", duration);
-            // Execute the instruction
-            currentTime += duration;
-            currentProcess->totalExecTime += duration;
-            currentProcess->arrivalTime = currentTime;
-            timeSlice += duration;
             
-
-            if(timeSlice>=currentProcess->quantum){
-                for(int i=timeSlice; i>=currentProcess->quantum; i-=currentProcess->quantum){
-                    quantumValue +=1;
-                }  
-            }
-            currentProcess->quantumCount +=  quantumValue;
-            //processBurstTime += duration;
-            currentProcess->currentLine++;
-            // Check for preemption (Silver process) or upgrades (Gold to Platinum)
-            if (strcmp(currentProcess->type, "SILVER") == 0 && currentProcess->quantumCount > 3 ) {
-                strcpy(currentProcess->type, "GOLD");
-                //processChange=1; // Preempt the Silver process
-                //break;
-            }
-            if (strcmp(currentProcess->type, "GOLD") == 0 && currentProcess->quantumCount > 5 ) {
-                printf("Upgrading %s to PLATINUM\n", currentProcess->name);
-                strcpy(currentProcess->type, "PLATINUM");
-                //processChange=1; // Upgrade Gold to Platinum
-                //break;
-            }
             
             
         }
