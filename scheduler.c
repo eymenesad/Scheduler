@@ -200,29 +200,14 @@ void scheduler(Process* processes, int processCount) {
             
             // printf("Current time: %d Current process: %s  \n", currentTime, currentProcess->name);
             int duration = currentProcess->instructions[currentProcess->currentLine].duration;
-            printf("duration %d\n", duration);
             // Execute the instruction
             currentTime += duration;
             currentProcess->totalExecTime += duration;
             currentProcess->arrivalTime = currentTime;
             currentProcess->timeSlice += duration;
             printf("currentProcess time Slice: %d \n", currentProcess->timeSlice);
-            printf("currentProcess quantum : %d \n", currentProcess->quantum);
-
-            if(currentProcess->timeSlice>=currentProcess->quantum){
-                for(int i=currentProcess->timeSlice; i>=currentProcess->quantum; i-=currentProcess->quantum){
-                    quantumValue +=1;
-                    currentProcess->timeSlice-=currentProcess->quantum;
-                    
-                }
-                
-            }else if(currentProcess->timeSlice != 0){
-                quantumValue +=1;
-                
-            }
+            printf("currentTime: %d \n", currentTime);
             
-            
-            currentProcess->quantumCount +=  quantumValue;
             printf("currentProcess %s quantum count: %d \n",currentProcess->name ,currentProcess->quantumCount);
             //processBurstTime += duration;
             currentProcess->currentLine++;
@@ -250,6 +235,8 @@ void scheduler(Process* processes, int processCount) {
                     Process* possible = &processes[i];
                     //print every processes array
                    
+                    
+                        
                     
                     if (possible->arrivalTime <= currentTime &&
                         possible->currentLine < possible->instructionCount) {
@@ -279,40 +266,56 @@ void scheduler(Process* processes, int processCount) {
                             
                             //printf(" current time %d currentprocess %s possible: %s nextProcess %s\n",currentTime, currentProcess->name ,possible->name, nextProcess->name);
                             // Check if this possible has higher priority to be scheduled
-                            if (nextProcess == NULL || possible->priority > nextHighestPriority){
-                                
-                                nextProcess = possible;
-                                nextHighestPriority = possible->priority;
-
-
-                            }
-                            else if(possible->priority == nextHighestPriority ){
-                                if(possible->arrivalTime < nextProcess->arrivalTime){
+                            if(currentProcess->timeSlice>=currentProcess->quantum){
+                                if (nextProcess == NULL || possible->priority > nextHighestPriority){
                                     
                                     nextProcess = possible;
                                     nextHighestPriority = possible->priority;
-                                    //printf("nextProcess %s\n", nextProcess->name);
-                                }else if(possible->arrivalTime == nextProcess->arrivalTime){
-                                    if(strcmp(possible->name, nextProcess->name) < 0){
+
+
+                                }
+                                else if(possible->priority == nextHighestPriority ){
+                                    if(possible->arrivalTime < nextProcess->arrivalTime){
+                                        
                                         nextProcess = possible;
                                         nextHighestPriority = possible->priority;
+                                        //printf("nextProcess %s\n", nextProcess->name);
+                                    }else if(possible->arrivalTime == nextProcess->arrivalTime){
+                                        if(strcmp(possible->name, nextProcess->name) < 0){
+                                            nextProcess = possible;
+                                            nextHighestPriority = possible->priority;
+                                        }
                                     }
                                 }
                             }
                         }   
                     } 
 
-                 
+                    
                 }
                 //printf("current process: %s nextProcess %s\n", currentProcess->name, nextProcess->name);
                 // Handle context switch
                 if (nextProcess != NULL && nextProcess != currentProcess) {
-                    if(currentProcess->timeSlice>0){
-                       currentProcess->quantumCount += 1;
+                    if(currentProcess->timeSlice>=currentProcess->quantum){
+                        for(int i=currentProcess->timeSlice; i>=currentProcess->quantum; i-=currentProcess->quantum){
+                            quantumValue +=1;
+                            currentProcess->timeSlice-=currentProcess->quantum;
+                            
+                        }
+                            
+                    
+                    }else if(currentProcess->timeSlice > 0){
+                        quantumValue +=1;
+                        currentProcess->timeSlice=0;
+                        
                     }
+                    
+                    currentProcess->quantumCount +=  quantumValue;
+                    
                     currentTime += 10; // Context switch time
                     currentProcess = nextProcess;
                     processChange = 1;
+                    
                     
                     break;
                 }
