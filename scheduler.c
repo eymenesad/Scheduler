@@ -22,6 +22,7 @@ typedef struct {
     int totalExecTime; // Total execution time so far
     int quantum; // Time quantum for the process
     int quantumCount; // Number of time quanta used so far
+    int timeSlice; 
 } Process;
 
 
@@ -175,7 +176,7 @@ void scheduler(Process* processes, int processCount) {
         printf("Current time: %d Current process: %s  \n", currentTime, currentProcess->name);
         //int timeSlice = 0; // Time slice used in this round
         int processChange = 0;
-        int timeSlice=0;
+        
         // Execute the process
         //int processBurstTime = 0;
         /*int duration = currentProcess->instructions[currentProcess->currentLine].duration;
@@ -204,17 +205,18 @@ void scheduler(Process* processes, int processCount) {
             currentTime += duration;
             currentProcess->totalExecTime += duration;
             currentProcess->arrivalTime = currentTime;
-            timeSlice += duration;
+            currentProcess->timeSlice += duration;
+            printf("currentProcess time Slice: %d \n", currentProcess->timeSlice);
             printf("currentProcess quantum : %d \n", currentProcess->quantum);
 
-            if(timeSlice>=currentProcess->quantum){
-                for(int i=timeSlice; i>=currentProcess->quantum; i-=currentProcess->quantum){
+            if(currentProcess->timeSlice>=currentProcess->quantum){
+                for(int i=currentProcess->timeSlice; i>=currentProcess->quantum; i-=currentProcess->quantum){
                     quantumValue +=1;
-                    timeSlice-=currentProcess->quantum;
+                    currentProcess->timeSlice-=currentProcess->quantum;
                     
                 }
                 
-            }else if(timeSlice!=0){
+            }else if(currentProcess->timeSlice != 0){
                 quantumValue +=1;
                 
             }
@@ -305,10 +307,13 @@ void scheduler(Process* processes, int processCount) {
                 //printf("current process: %s nextProcess %s\n", currentProcess->name, nextProcess->name);
                 // Handle context switch
                 if (nextProcess != NULL && nextProcess != currentProcess) {
+                    if(currentProcess->timeSlice>0){
+                       currentProcess->quantumCount += 1;
+                    }
                     currentTime += 10; // Context switch time
                     currentProcess = nextProcess;
                     processChange = 1;
-                    currentProcess->quantumCount += 1;
+                    
                     break;
                 }
                 
@@ -361,6 +366,7 @@ int main() {
         strcpy(processes[i].type, "UNKNOWN"); // Default value
         processes[i].totalExecTime = 0; // Initialize the total execution time to 0
         processes[i].quantumCount = 0; // Initialize the quantum to 0
+        processes[i].timeSlice=0;
         parseProcessFile(filename, &processes[i]);
         if (processes[i].instructionCount > 0) {
             processCount++; // Increment processCount for successfully parsed process
