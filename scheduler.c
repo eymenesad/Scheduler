@@ -114,20 +114,46 @@ void scheduler(Process* processes, int processCount) {
         int highestPriority = 0;
         
         
-
+        
         // Find the highest priority process that has arrived
         for (int i = 0; i < processCount; i++) {
             Process* possible = &processes[i];
             if (possible->arrivalTime <= currentTime &&
                 possible->currentLine < possible->instructionCount) {
+                
                 if(strcmp(possible->type, "PLATINUM") == 0){
                     if(currentProcess != NULL && strcmp(currentProcess->type , "PLATINUM")==0 ){
-                        
                         // Check if this possible has higher priority to be scheduled
+                        //if(possible->arrivalTime == currentProcess->arrivalTime){
+                        if(currentProcess->currentLine==0){
+                            if (possible->priority > highestPriority){
+                                currentProcess = possible;
+                                highestPriority = possible->priority;
+                            }else if(possible->priority == highestPriority ){
+                                if(possible->arrivalTime < currentProcess->arrivalTime){
+                                    currentProcess = possible;
+                                    highestPriority = possible->priority;
+                                }else if(possible->arrivalTime == currentProcess->arrivalTime){
+                                    if(strcmp(possible->name, currentProcess->name) < 0){
+                                        currentProcess = possible;
+                                        highestPriority = possible->priority;
+                                    }
+                                }
+                            }
+                    }//}}
+                    }else{
+                        currentProcess = possible;
+                        highestPriority = possible->priority;
+                        
+                    }
+                }else {
+                    
+                    // Check if this possible has higher priority to be scheduled
                         if (possible->priority > highestPriority){
                             currentProcess = possible;
                             highestPriority = possible->priority;
-                        }else if(possible->priority == highestPriority ){
+                        }
+                        else if(possible->priority == highestPriority ){
                             if(possible->arrivalTime < currentProcess->arrivalTime){
                                 currentProcess = possible;
                                 highestPriority = possible->priority;
@@ -138,195 +164,60 @@ void scheduler(Process* processes, int processCount) {
                                 }
                             }
                         }
-                        
-                    }else{
-                        currentProcess = possible;
-                        highestPriority = possible->priority;
-                        
-                    }
-                }else {
-                    // Check if this possible has higher priority to be scheduled
-                    if (currentProcess == NULL || possible->priority > highestPriority){
-                        currentProcess = possible;
-                        highestPriority = possible->priority;
-                    }
-                    else if(possible->priority == highestPriority ){
-                        if(possible->arrivalTime < currentProcess->arrivalTime){
-                            currentProcess = possible;
-                            highestPriority = possible->priority;
-                        }else if(possible->arrivalTime == currentProcess->arrivalTime){
-                            if(strcmp(possible->name, currentProcess->name) < 0){
-                                currentProcess = possible;
-                                highestPriority = possible->priority;
-                            }
-                        }
-                    }
+                    
                 }
             }  
         }
+        
         // If no process is available to execute, break the loop
         if (currentProcess == NULL) {
+            
+            
             break;
         }
         //printf("Current process: %s\n", currentProcess->name);
         // Handle context switch
         if (currentProcess != lastProcess) {
+            
+            
+            if(lastProcess!=NULL && lastProcess->timeSlice > 0){
+                lastProcess->arrivalTime = currentTime;
+                lastProcess->quantumCount +=1;
+                lastProcess->timeSlice=0;
+
+            }
             currentTime += 10; // Context switch time
         }
-        printf("Current time: %d Current process: %s  \n", currentTime, currentProcess->name);
-        //int timeSlice = 0; // Time slice used in this round
-        int processChange = 0;
-        
-        // Execute the process
-        //int processBurstTime = 0;
-        /*int duration = currentProcess->instructions[currentProcess->currentLine].duration;
+        printf("Current time: %d Current process: %s, currentprocess arrival time: %d  \n", currentTime, currentProcess->name,  currentProcess->arrivalTime);
+        int duration = currentProcess->instructions[currentProcess->currentLine].duration;
         // Execute the instruction
         currentTime += duration;
         currentProcess->totalExecTime += duration;
-        timeSlice += duration;
-        printf("duration first instr: %d  \n ", duration );
-        if(timeSlice>=currentProcess->quantum){
-            currentProcess->quantumCount += 1;
+        
+        
+        currentProcess->timeSlice += duration;
+        //currentProcess->arrivalTime = currentTime;
+        currentProcess->currentLine++;
+        // Check for preemption (Silver process) or upgrades (Gold to Platinum)
+        if (strcmp(currentProcess->type, "SILVER") == 0 && currentProcess->quantumCount > 3 ) {
+            strcpy(currentProcess->type, "GOLD");
+            
         }
-        //processBurstTime += duration;
-        currentProcess->currentLine++;*/
-        while (currentProcess->currentLine < currentProcess->instructionCount || processChange) {
-            processChange = 0;
-            int quantumValue=0;
+        if (strcmp(currentProcess->type, "GOLD") == 0 && currentProcess->quantumCount > 5 ) {
+            printf("Upgrading %s to PLATINUM\n", currentProcess->name);
+            strcpy(currentProcess->type, "PLATINUM");
+            
+        }
             
             
             
-            //int timeSlice = 0;
             
-            // printf("Current time: %d Current process: %s  \n", currentTime, currentProcess->name);
-            int duration = currentProcess->instructions[currentProcess->currentLine].duration;
-            // Execute the instruction
-            currentTime += duration;
-            currentProcess->totalExecTime += duration;
+        if(currentProcess->timeSlice >= currentProcess->quantum){
             currentProcess->arrivalTime = currentTime;
-            currentProcess->timeSlice += duration;
-            printf("currentProcess time Slice: %d \n", currentProcess->timeSlice);
-            printf("currentTime: %d \n", currentTime);
-            
-            printf("currentProcess %s quantum count: %d \n",currentProcess->name ,currentProcess->quantumCount);
-            //processBurstTime += duration;
-            currentProcess->currentLine++;
-            // Check for preemption (Silver process) or upgrades (Gold to Platinum)
-            if (strcmp(currentProcess->type, "SILVER") == 0 && currentProcess->quantumCount > 3 ) {
-                strcpy(currentProcess->type, "GOLD");
-                //processChange=1; // Preempt the Silver process
-                //break;
-            }
-            if (strcmp(currentProcess->type, "GOLD") == 0 && currentProcess->quantumCount > 5 ) {
-                printf("Upgrading %s to PLATINUM\n", currentProcess->name);
-                strcpy(currentProcess->type, "PLATINUM");
-                //processChange=1; // Upgrade Gold to Platinum
-                //break;
-            }
-            
-            
-            
-            
-            if(strcmp(currentProcess->type, "PLATINUM") != 0){
-                Process* nextProcess = NULL;
-                int nextHighestPriority = 0;
-                // Find the highest priority process that has arrived
-                for (int i = 0; i < processCount; ++i) {
-                    Process* possible = &processes[i];
-                    //print every processes array
-                   
-                    
-                        
-                    
-                    if (possible->arrivalTime <= currentTime &&
-                        possible->currentLine < possible->instructionCount) {
-                        if(strcmp(possible->type, "PLATINUM") == 0){
-                            if(nextProcess != NULL  && strcmp(nextProcess->type , "PLATINUM")==0 ){
-                                // Check if this possible has higher priority to be scheduled
-                                if (possible->priority > nextHighestPriority){
-                                    nextProcess = possible;
-                                    nextHighestPriority = possible->priority;
-                                }else if(possible->priority == nextHighestPriority ){
-                                    if(possible->arrivalTime < nextProcess->arrivalTime){
-                                        nextProcess = possible;
-                                        nextHighestPriority = possible->priority;
-                                    }else if(possible->arrivalTime == nextProcess->arrivalTime){
-                                        if(strcmp(possible->name, nextProcess->name) < 0){
-                                            nextProcess = possible;
-                                            nextHighestPriority = possible->priority;
-                                        }
-                                    }
-                                }
-                            }else{
-                                
-                                nextProcess = possible;
-                                nextHighestPriority = possible->priority;
-                            }
-                        }else {
-                            
-                            //printf(" current time %d currentprocess %s possible: %s nextProcess %s\n",currentTime, currentProcess->name ,possible->name, nextProcess->name);
-                            // Check if this possible has higher priority to be scheduled
-                            if(currentProcess->timeSlice>=currentProcess->quantum){
-                                if (nextProcess == NULL || possible->priority > nextHighestPriority){
-                                    
-                                    nextProcess = possible;
-                                    nextHighestPriority = possible->priority;
-
-
-                                }
-                                else if(possible->priority == nextHighestPriority ){
-                                    if(possible->arrivalTime < nextProcess->arrivalTime){
-                                        
-                                        nextProcess = possible;
-                                        nextHighestPriority = possible->priority;
-                                        //printf("nextProcess %s\n", nextProcess->name);
-                                    }else if(possible->arrivalTime == nextProcess->arrivalTime){
-                                        if(strcmp(possible->name, nextProcess->name) < 0){
-                                            nextProcess = possible;
-                                            nextHighestPriority = possible->priority;
-                                        }
-                                    }
-                                }
-                            }
-                        }   
-                    } 
-
-                    
-                }
-                //printf("current process: %s nextProcess %s\n", currentProcess->name, nextProcess->name);
-                // Handle context switch
-                if (nextProcess != NULL && nextProcess != currentProcess) {
-                    if(currentProcess->timeSlice>=currentProcess->quantum){
-                        for(int i=currentProcess->timeSlice; i>=currentProcess->quantum; i-=currentProcess->quantum){
-                            quantumValue +=1;
-                            currentProcess->timeSlice-=currentProcess->quantum;
-                            
-                        }
-                            
-                    
-                    }else if(currentProcess->timeSlice > 0){
-                        quantumValue +=1;
-                        currentProcess->timeSlice=0;
-                        
-                    }
-                    
-                    currentProcess->quantumCount +=  quantumValue;
-                    
-                    currentTime += 10; // Context switch time
-                    currentProcess = nextProcess;
-                    processChange = 1;
-                    
-                    
-                    break;
-                }
-                
-                
-            }
-            
-            
-            
+            currentProcess->quantumCount +=1;
+            currentProcess->timeSlice=0;
         }
-        //printf("current process: %s\n", currentProcess->name);
+
         
         if(strcmp(currentProcess->instructions[currentProcess->currentLine-1].name, "exit") == 0){
             // Calculate turnaround and waiting times
@@ -335,22 +226,27 @@ void scheduler(Process* processes, int processCount) {
             int waitingTime = turnaroundTime - (currentProcess->totalExecTime);
             totalWaitingTime += waitingTime;
             totalTurnaroundTime += turnaroundTime;
+            
+            
         }
         
+        printf("currentProcess time Slice: %d \n", currentProcess->timeSlice);
+        printf("currentTime: %d \n", currentTime);
         
+        printf("currentProcess %s quantum count: %d \n",currentProcess->name ,currentProcess->quantumCount);
 
         
         
         lastProcess = currentProcess;
         
-    }
+}
 
     // Calculate and print average waiting and turnaround times
     double avgWaitingTime = (double)totalWaitingTime / (processCount);
     double avgTurnaroundTime = (double)totalTurnaroundTime / (processCount);
     printf("Average Waiting Time: %.2lf\n", avgWaitingTime);
     printf("Average Turnaround Time: %.2lf\n", avgTurnaroundTime);
-}
+    }
 int main() {
     // Placeholder for process and instruction arrays
     Process processes[10]; // Assuming a maximum of 10 processes
@@ -376,7 +272,7 @@ int main() {
         }
     }
     // Parse the process definition file
-    parseDefinitionFile("def4.txt", processes, 10);
+    parseDefinitionFile("def8.txt", processes, 10);
     // Create an array to store processes from the definition file
     Process definedProcesses[10]; // Assuming a maximum of 10 processes in the definition file
     int definedProcessCount = 0; // Initialize the count of defined processes
