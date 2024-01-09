@@ -120,7 +120,7 @@ void scheduler(Process* processes, int processCount) {
             Process* possible = &processes[i];
             if (possible->arrivalTime <= currentTime &&
                 possible->currentLine < possible->instructionCount) {
-                
+                printf("possible: %s possibletype %s currentTime %d possible arrival time %d \n", possible->name, possible->type ,currentTime, possible->arrivalTime);
                 if(strcmp(possible->type, "PLATINUM") == 0){
                     if(currentProcess != NULL && strcmp(currentProcess->type , "PLATINUM")==0 ){
                         // Check if this possible has higher priority to be scheduled
@@ -144,6 +144,7 @@ void scheduler(Process* processes, int processCount) {
                     }else{
                         currentProcess = possible;
                         highestPriority = possible->priority;
+                        break;
                         
                     }
                 }else {
@@ -171,15 +172,15 @@ void scheduler(Process* processes, int processCount) {
         
         // If no process is available to execute, break the loop
         if (currentProcess == NULL) {
-            
-            
+           
             break;
+            
         }
         //printf("Current process: %s\n", currentProcess->name);
         // Handle context switch
         if (currentProcess != lastProcess) {
-            
-            
+            printf("lastProcess: %s\n", lastProcess == NULL ? "NULL" : lastProcess->name);
+            printf("Context switch from %s to %s at time %d\n", lastProcess == NULL ? "NULL" : lastProcess->name, currentProcess->name, currentTime);
             if(lastProcess!=NULL && lastProcess->timeSlice > 0){
                 lastProcess->arrivalTime = currentTime;
                 lastProcess->quantumCount +=1;
@@ -188,6 +189,7 @@ void scheduler(Process* processes, int processCount) {
             }
             currentTime += 10; // Context switch time
         }
+        
         printf("Current time: %d Current process: %s, currentprocess arrival time: %d  \n", currentTime, currentProcess->name,  currentProcess->arrivalTime);
         int duration = currentProcess->instructions[currentProcess->currentLine].duration;
         // Execute the instruction
@@ -208,14 +210,14 @@ void scheduler(Process* processes, int processCount) {
             strcpy(currentProcess->type, "PLATINUM");
             
         }
-            
+
             
             
             
         if(currentProcess->timeSlice >= currentProcess->quantum){
             currentProcess->arrivalTime = currentTime;
             currentProcess->quantumCount +=1;
-            currentProcess->timeSlice=0;
+            currentProcess->timeSlice= 0;
         }
 
         
