@@ -172,8 +172,25 @@ void scheduler(Process* processes, int processCount) {
         
         // If no process is available to execute, break the loop
         if (currentProcess == NULL) {
-           
-            break;
+           int zz=0;
+           int aa = INT_MAX;
+            for (int i = 0; i < processCount; i++) {
+                Process* possible = &processes[i];
+                
+                if (possible->currentLine == 0) {
+                    aa = possible->arrivalTime;
+                    zz=1;
+
+                }
+
+            }
+            currentTime = aa;
+            if(zz==1){
+                continue;
+            }else{
+                break;
+            }
+            
             
         }
         //printf("Current process: %s\n", currentProcess->name);
@@ -181,13 +198,27 @@ void scheduler(Process* processes, int processCount) {
         if (currentProcess != lastProcess) {
             printf("lastProcess: %s\n", lastProcess == NULL ? "NULL" : lastProcess->name);
             printf("Context switch from %s to %s at time %d\n", lastProcess == NULL ? "NULL" : lastProcess->name, currentProcess->name, currentTime);
+            currentTime += 10; // Context switch time
             if(lastProcess!=NULL && lastProcess->timeSlice > 0){
+                printf("lastProcess: %s lastprocess quantumcount %d \n", lastProcess->name, lastProcess->quantumCount);
                 lastProcess->arrivalTime = currentTime;
                 lastProcess->quantumCount +=1;
                 lastProcess->timeSlice=0;
-
+                if (strcmp(lastProcess->type, "SILVER") == 0 && lastProcess->quantumCount == 3 ) {
+                    strcpy(lastProcess->type, "GOLD");
+                    lastProcess->quantumCount = 0;
+                    lastProcess->quantum=120;
+            
+                }
+                if (strcmp(lastProcess->type, "GOLD") == 0 && lastProcess->quantumCount == 5 ) {
+                    printf("Upgrading %s to PLATINUM\n", currentProcess->name);
+                    strcpy(lastProcess->type, "PLATINUM");
+                    lastProcess->quantumCount = 0;
+                    lastProcess->quantum=INT_MAX;
+            
+                }
             }
-            currentTime += 10; // Context switch time
+            
         }
         
         printf("Current time: %d Current process: %s, currentprocess arrival time: %d  \n", currentTime, currentProcess->name,  currentProcess->arrivalTime);
@@ -201,25 +232,30 @@ void scheduler(Process* processes, int processCount) {
         //currentProcess->arrivalTime = currentTime;
         currentProcess->currentLine++;
         // Check for preemption (Silver process) or upgrades (Gold to Platinum)
-        if (strcmp(currentProcess->type, "SILVER") == 0 && currentProcess->quantumCount > 3 ) {
-            strcpy(currentProcess->type, "GOLD");
-            
-        }
-        if (strcmp(currentProcess->type, "GOLD") == 0 && currentProcess->quantumCount > 5 ) {
-            printf("Upgrading %s to PLATINUM\n", currentProcess->name);
-            strcpy(currentProcess->type, "PLATINUM");
-            
-        }
 
-            
-            
-            
         if(currentProcess->timeSlice >= currentProcess->quantum){
             currentProcess->arrivalTime = currentTime;
             currentProcess->quantumCount +=1;
-            currentProcess->timeSlice= 0;
+            currentProcess->timeSlice = 0;
         }
 
+        if (strcmp(currentProcess->type, "SILVER") == 0 && currentProcess->quantumCount == 3 ) {
+            strcpy(currentProcess->type, "GOLD");
+            currentProcess->quantumCount = 0;
+            currentProcess->quantum=120;
+        }
+        if (strcmp(currentProcess->type, "GOLD") == 0 && currentProcess->quantumCount == 5 ) {
+            printf("Upgrading %s to PLATINUM\n", currentProcess->name);
+            strcpy(currentProcess->type, "PLATINUM");
+            currentProcess->quantumCount = 0;
+            currentProcess->quantum=INT_MAX;
+            
+        }
+
+            
+            
+            
+        
         
         if(strcmp(currentProcess->instructions[currentProcess->currentLine-1].name, "exit") == 0){
             // Calculate turnaround and waiting times
@@ -246,8 +282,8 @@ void scheduler(Process* processes, int processCount) {
     // Calculate and print average waiting and turnaround times
     double avgWaitingTime = (double)totalWaitingTime / (processCount);
     double avgTurnaroundTime = (double)totalTurnaroundTime / (processCount);
-    printf("Average Waiting Time: %.2lf\n", avgWaitingTime);
-    printf("Average Turnaround Time: %.2lf\n", avgTurnaroundTime);
+    printf("Average Waiting Time: %.1lf\n", avgWaitingTime);
+    printf("Average Turnaround Time: %.1lf\n", avgTurnaroundTime);
     }
 int main() {
     // Placeholder for process and instruction arrays
