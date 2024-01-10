@@ -193,7 +193,6 @@ void scheduler(Process* processes, int processCount) {
             
             
         }
-        //printf("Current process: %s\n", currentProcess->name);
         // Handle context switch
         if (currentProcess != lastProcess) {
             currentTime += 10; // Context switch time
@@ -210,7 +209,6 @@ void scheduler(Process* processes, int processCount) {
             
                 }
                 if (strcmp(lastProcess->type, "GOLD") == 0 && lastProcess->quantumCount == 5 ) {
-                    printf("Upgrading %s to PLATINUM\n", currentProcess->name);
                     strcpy(lastProcess->type, "PLATINUM");
                     lastProcess->quantumCount = 0;
                     lastProcess->quantum=INT_MAX;
@@ -241,7 +239,6 @@ void scheduler(Process* processes, int processCount) {
             currentProcess->quantum=120;
         }
         if (strcmp(currentProcess->type, "GOLD") == 0 && currentProcess->quantumCount == 5 ) {
-            printf("Upgrading %s to PLATINUM\n", currentProcess->name);
             strcpy(currentProcess->type, "PLATINUM");
             currentProcess->quantumCount = 0;
             currentProcess->quantum=INT_MAX;
@@ -255,7 +252,6 @@ void scheduler(Process* processes, int processCount) {
         // Check if the process has completed
         if(strcmp(currentProcess->instructions[currentProcess->currentLine-1].name, "exit") == 0){
             // Calculate turnaround and waiting times
-            printf("Process %s completed at time %d\n", currentProcess->name, currentTime);
             int turnaroundTime = currentTime - currentProcess->arrivalTimePrimal;
             int waitingTime = turnaroundTime - (currentProcess->totalExecTime);
             totalWaitingTime += waitingTime;
@@ -275,8 +271,8 @@ void scheduler(Process* processes, int processCount) {
     // Calculate and print average waiting and turnaround times
     double avgWaitingTime = (double)totalWaitingTime / (processCount);
     double avgTurnaroundTime = (double)totalTurnaroundTime / (processCount);
-    printf("Average Waiting Time: %.1lf\n", avgWaitingTime);
-    printf("Average Turnaround Time: %.1lf\n", avgTurnaroundTime);
+    printf("%.1lf\n", avgWaitingTime);
+    printf("%.1lf\n", avgTurnaroundTime);
     }
 int main() {
     // Placeholder for process and instruction arrays
