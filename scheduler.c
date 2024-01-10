@@ -14,9 +14,9 @@ typedef struct {
     char name[10];
     int priority;
     int arrivalTime;
-    int arrivalTimePrimal;
-    char type[10];
-    int currentLine;
+    int arrivalTimePrimal; // Arrival time unchanged
+    char type[10]; 
+    int currentLine; 
     Instruction instructions[21]; // Array of instructions
     int instructionCount; // Number of instructions
     int totalExecTime; // Total execution time so far
@@ -33,7 +33,7 @@ void parseProcessFile(char* filename, Process* process) {
         return;
     }
 
-    char line[21];
+    char line[21];  
     process->instructionCount = 0;
     while (fgets(line, sizeof(line), file)) {
         // Remove newline character if present
@@ -88,11 +88,11 @@ void parseDefinitionFile(char* filename, Process* processes, int processCount) {
                 processes[i].arrivalTimePrimal = arrivalTime;
                 strcpy(processes[i].type, processType);
                 if (strcmp(processes[i].type, "SILVER") == 0) {
-                    processes[i].quantum = 80;
+                    processes[i].quantum = 80; // 80ms is the time quantum for silver processes
                 } else if(strcmp(processes[i].type, "GOLD") == 0) { 
-                    processes[i].quantum = 120;
+                    processes[i].quantum = 120; // 120ms is the time quantum for gold processes
                 }else if(strcmp(processes[i].type, "PLATINUM") == 0) { 
-                    processes[i].quantum = INT_MAX;
+                    processes[i].quantum = INT_MAX; // INT_MAX is used to represent infinity
                 }
                 break;
             }
@@ -106,7 +106,7 @@ void scheduler(Process* processes, int processCount) {
     int currentTime = 0;
     int totalWaitingTime = 0;
     int totalTurnaroundTime = 0;
-    Process* lastProcess = NULL;
+    Process* lastProcess = NULL; // Pointer to the last process that was executed
 
     // Execute processes in a loop until all processes are completed
     while (1) {
@@ -296,7 +296,7 @@ int main() {
         strcpy(processes[i].type, "UNKNOWN"); // Default value
         processes[i].totalExecTime = 0; // Initialize the total execution time to 0
         processes[i].quantumCount = 0; // Initialize the quantum to 0
-        processes[i].timeSlice=0;
+        processes[i].timeSlice=0;// Initialize the time slice to 0
         parseProcessFile(filename, &processes[i]);
         if (processes[i].instructionCount > 0) {
             processCount++; // Increment processCount for successfully parsed process
