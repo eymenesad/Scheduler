@@ -328,10 +328,6 @@ int main() {
     
     // Call the scheduler function with only the defined processes
     scheduler(definedProcesses, definedProcessCount);
-    
-
-    
-
     return 0;
 }
 
