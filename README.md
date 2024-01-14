@@ -1,6 +1,6 @@
 # Scheduler
 
-This program is a scheduler written in C.
+This program is a scheduler written in C. The program aims to simulate a scheduler for a set of processes, considering various factors like priority, arrival time, and quantum times for different process types. The scheduler adheres to a priority-driven preemption policy, dynamically adjusting process priorities and managing context switches.
 
 ## Dependencies
 
